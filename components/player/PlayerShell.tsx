@@ -1,0 +1,171 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import PlayerControls from "./PlayerControls";
+import ModeSelector from "./ModeSelector";
+import SyncMode from "./modes/SyncMode";
+import TranslateMode from "./modes/TranslateMode";
+import FillBlankMode from "./modes/FillBlankMode";
+import WordTapMode from "./modes/WordTapMode";
+import { useAudioSync } from "@/hooks/useAudioSync";
+import type { PlaybackMode, LyricsLine, WordEnrichment, Song } from "@/types";
+
+interface PlayerShellProps {
+  song: Song;
+  lines: LyricsLine[];
+  enrichments: WordEnrichment[];
+  audioUrl?: string | null; // objectURL from upload, null for demo songs
+}
+
+export default function PlayerShell({ song, lines, enrichments, audioUrl }: PlayerShellProps) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [mode, setMode] = useState<PlaybackMode>("sync");
+  const rafRef = useRef<number | null>(null);
+
+  const currentTimeMs = currentTime * 1000;
+  const activeIndex = useAudioSync(lines, currentTimeMs);
+
+  // RAF-based time update
+  useEffect(() => {
+    const tick = () => {
+      if (audioRef.current && !audioRef.current.paused) {
+        setCurrentTime(audioRef.current.currentTime);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, []);
+
+  const handlePlayPause = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.play().then(() => setIsPlaying(true)).catch(() => {});
+    } else {
+      audio.pause();
+      setIsPlaying(false);
+    }
+  }, []);
+
+  const handleSeek = useCallback((time: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = time / 1000; // ms → seconds
+    setCurrentTime(time / 1000);
+  }, []);
+
+  const handleSeekSec = useCallback((sec: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = sec;
+    setCurrentTime(sec);
+  }, []);
+
+  const handleRateChange = useCallback((rate: number) => {
+    if (audioRef.current) audioRef.current.playbackRate = rate;
+    setPlaybackRate(rate);
+  }, []);
+
+  return (
+    <div className="flex flex-col md:flex-row h-[calc(100vh-56px)]">
+      {/* Sidebar: song info + controls */}
+      <div className="w-full md:w-72 shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-white/5 bg-bg-card">
+        {/* Album art */}
+        <div className="relative aspect-square bg-bg-elevated overflow-hidden">
+          {song.coverUrl ? (
+            <Image src={song.coverUrl} alt={song.title} fill unoptimized referrerPolicy="no-referrer" className="object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg className="h-24 w-24 text-white/10" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+              </svg>
+            </div>
+          )}
+        </div>
+
+        {/* Song info */}
+        <div className="px-4 pt-4 pb-2">
+          <h1 className="font-bold text-white text-lg leading-tight">{song.title}</h1>
+          <p className="text-white/50 text-sm">{song.artist}</p>
+          {song.album && <p className="text-white/30 text-xs mt-0.5">{song.album} {song.year ? `• ${song.year}` : ""}</p>}
+
+          {audioUrl && (
+            <p className="text-xs text-amber-400 mt-2 bg-amber-400/10 rounded-lg px-2 py-1">
+              Demo song — upload your own audio to play
+            </p>
+          )}
+
+          {/* Quiz link */}
+          <Link
+            href={`/quiz/${song.id}`}
+            className="mt-3 flex items-center gap-2 text-xs text-white/50 hover:text-accent transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Take the quiz
+          </Link>
+        </div>
+
+        {/* Audio element */}
+        {audioUrl && (
+          <audio
+            ref={audioRef}
+            src={audioUrl}
+            onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
+            onEnded={() => setIsPlaying(false)}
+            className="hidden"
+          />
+        )}
+
+        {/* Player controls */}
+        <div className="mt-auto">
+          <PlayerControls
+            isPlaying={isPlaying}
+            currentTime={currentTime}
+            duration={duration}
+            playbackRate={playbackRate}
+            onPlayPause={handlePlayPause}
+            onSeek={handleSeekSec}
+            onRateChange={handleRateChange}
+          />
+        </div>
+      </div>
+
+      {/* Main: mode selector + lyrics */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Mode tabs */}
+        <div className="px-4 py-3 border-b border-white/5 shrink-0">
+          <ModeSelector mode={mode} onChange={setMode} />
+        </div>
+
+        {/* Lyrics area */}
+        <div className="flex-1 overflow-hidden p-4">
+          {lines.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-white/20 text-center">
+              <div>
+                <p className="text-lg font-medium mb-2">No lyrics available</p>
+                <p className="text-sm">Upload your own audio to transcribe lyrics.</p>
+              </div>
+            </div>
+          ) : mode === "sync" ? (
+            <SyncMode lines={lines} activeIndex={activeIndex} onSeek={handleSeek} />
+          ) : mode === "translate" ? (
+            <TranslateMode lines={lines} activeIndex={activeIndex} onSeek={handleSeek} />
+          ) : mode === "fill" ? (
+            <FillBlankMode lines={lines} enrichments={enrichments} activeIndex={activeIndex} onSeek={handleSeek} />
+          ) : (
+            <WordTapMode lines={lines} enrichments={enrichments} activeIndex={activeIndex} onSeek={handleSeek} songTitle={song.title} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

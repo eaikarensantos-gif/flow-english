@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Song {
+  id          String   @id @default(cuid())
+  title       String
+  artist      String
+  album       String?
+  year        Int?
+  level       String
+  coverUrl    String?
+  geniusUrl   String?
+  duration    Int?
+  tags        String   @default("[]")
+  lyrics      String?
+  createdAt   DateTime @default(now())
+
+  lyricsLines     LyricsLine[]
+  wordEnrichments WordEnrichment[]
+}
+
+model LyricsLine {
+  id           String    @id @default(cuid())
+  songId       String
+  lineIndex    Int
+  text         String
+  startMs      Int?
+  endMs        Int?
+  translation  String?
+  culturalNote String?
+  enrichedAt   DateTime?
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+}
+
+model WordEnrichment {
+  id           String @id @default(cuid())
+  songId       String
+  word         String
+  definition   String
+  partOfSpeech String
+  example      String
+  difficulty   String
+  lineIndex    Int
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+}
