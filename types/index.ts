@@ -10,6 +10,7 @@ export interface Song {
   duration?: number | null;
   tags: string;
   lyrics?: string | null;
+  spotifyId?: string | null;
   createdAt: Date;
 }
 

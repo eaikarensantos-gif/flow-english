@@ -108,16 +108,36 @@ export default function PlayerShell({ song, lines, enrichments, audioUrl }: Play
           <p className="text-white/50 text-sm">{song.artist}</p>
           {song.album && <p className="text-white/30 text-xs mt-0.5">{song.album} {song.year ? `• ${song.year}` : ""}</p>}
 
-          {/* Audio file picker */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="mt-3 w-full flex items-center gap-2 text-xs bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/30 text-white/50 hover:text-white rounded-lg px-3 py-2 transition-all"
-          >
-            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-            </svg>
-            {localAudioUrl ? "Change audio file" : "Load audio file to play"}
-          </button>
+          {/* Audio: Spotify embed or local file picker */}
+          {song.spotifyId && !localAudioUrl ? (
+            <div className="mt-3">
+              <iframe
+                src={`https://open.spotify.com/embed/track/${song.spotifyId}?utm_source=generator&theme=0`}
+                width="100%"
+                height="80"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+                className="rounded-xl"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-2 w-full text-xs text-white/30 hover:text-white/60 transition-colors text-center"
+              >
+                or load local file for sync mode ↑
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-3 w-full flex items-center gap-2 text-xs bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/30 text-white/50 hover:text-white rounded-lg px-3 py-2 transition-all"
+            >
+              <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+              </svg>
+              {localAudioUrl ? "Change audio file" : "Load audio file to play"}
+            </button>
+          )}
           <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={handleLocalFile} />
 
           {/* Quiz link */}

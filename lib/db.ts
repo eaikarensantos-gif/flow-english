@@ -59,25 +59,23 @@ function row<T>(columns: string[], data: unknown[]): T {
 
 // ── Songs ────────────────────────────────────────────────────────────────────
 
+const SONG_COLS = "id,title,artist,album,year,level,coverUrl,geniusUrl,duration,tags,spotifyId,createdAt";
+const SONG_KEYS = ["id","title","artist","album","year","level","coverUrl","geniusUrl","duration","tags","spotifyId","createdAt"];
+
 export async function getSongs(level?: string | null): Promise<Song[]> {
   const db = getClient();
   const sql = level
-    ? `SELECT id,title,artist,album,year,level,coverUrl,geniusUrl,duration,tags,createdAt FROM Song WHERE level=? ORDER BY createdAt DESC`
-    : `SELECT id,title,artist,album,year,level,coverUrl,geniusUrl,duration,tags,createdAt FROM Song ORDER BY createdAt DESC`;
+    ? `SELECT ${SONG_COLS} FROM Song WHERE level=? ORDER BY createdAt DESC`
+    : `SELECT ${SONG_COLS} FROM Song ORDER BY createdAt DESC`;
   const res = await db.execute(sql, level ? [level] : []);
-  const cols = ["id","title","artist","album","year","level","coverUrl","geniusUrl","duration","tags","createdAt"];
-  return res.rows.map(r => row<Song>(cols, r as unknown[]));
+  return res.rows.map(r => row<Song>(SONG_KEYS, r as unknown[]));
 }
 
 export async function getSongById(id: string): Promise<Song | null> {
   const db = getClient();
-  const res = await db.execute(
-    `SELECT id,title,artist,album,year,level,coverUrl,geniusUrl,duration,tags,createdAt FROM Song WHERE id=?`,
-    [id]
-  );
+  const res = await db.execute(`SELECT ${SONG_COLS} FROM Song WHERE id=?`, [id]);
   if (!res.rows.length) return null;
-  const cols = ["id","title","artist","album","year","level","coverUrl","geniusUrl","duration","tags","createdAt"];
-  return row<Song>(cols, res.rows[0] as unknown[]);
+  return row<Song>(SONG_KEYS, res.rows[0] as unknown[]);
 }
 
 export async function createSong(data: {
