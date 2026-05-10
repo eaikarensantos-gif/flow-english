@@ -2,13 +2,16 @@ import { PrismaClient } from "@/app/generated/prisma/client";
 
 function createPrismaClient(): PrismaClient {
   if (process.env.TURSO_DATABASE_URL) {
-    // Use web/HTTP adapter for Vercel compatibility (no native bindings)
+    // Production: Turso via libSQL HTTP (no native bindings)
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { PrismaLibSql } = require("@prisma/adapter-libsql/web");
-    const adapter = new PrismaLibSql({
+    const { createClient } = require("@libsql/client/http");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaLibSql } = require("@prisma/adapter-libsql");
+    const client = createClient({
       url: process.env.TURSO_DATABASE_URL,
       authToken: process.env.TURSO_AUTH_TOKEN,
     });
+    const adapter = new PrismaLibSql(client);
     return new PrismaClient({ adapter } as any);
   }
 
