@@ -19,7 +19,16 @@ interface PlayerShellProps {
   audioUrl?: string | null; // objectURL from upload, null for demo songs
 }
 
+// Verified Spotify track IDs for demo songs
+const SPOTIFY_IDS: Record<string, string> = {
+  "humble-kdot":  "7KXjTSCq5nL1LoYtL7XAwS",
+  "alright-kdot": "3iVcZ5G6tvkXZkZKlMpIUs",
+  "empire-jz":    "2igwFfvr1OAGX9SKDCPBwO",
+  "ny-state-nas": "0IlM7NOK43Mx94NLWsCG18",
+};
+
 export default function PlayerShell({ song, lines, enrichments, audioUrl }: PlayerShellProps) {
+  const spotifyId = SPOTIFY_IDS[song.id] ?? song.spotifyId ?? null;
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -109,10 +118,10 @@ export default function PlayerShell({ song, lines, enrichments, audioUrl }: Play
           {song.album && <p className="text-white/30 text-xs mt-0.5">{song.album} {song.year ? `• ${song.year}` : ""}</p>}
 
           {/* Audio: Spotify embed or local file picker */}
-          {song.spotifyId && !localAudioUrl ? (
+          {spotifyId && !localAudioUrl ? (
             <div className="mt-3">
               <iframe
-                src={`https://open.spotify.com/embed/track/${song.spotifyId}?utm_source=generator&theme=0`}
+                src={`https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&theme=0`}
                 width="100%"
                 height="80"
                 frameBorder="0"
