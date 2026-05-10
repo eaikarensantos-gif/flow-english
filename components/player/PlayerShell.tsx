@@ -27,6 +27,18 @@ export default function PlayerShell({ song, lines, enrichments, audioUrl }: Play
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [mode, setMode] = useState<PlaybackMode>("sync");
   const rafRef = useRef<number | null>(null);
+  const [localAudioUrl, setLocalAudioUrl] = useState<string | null>(audioUrl ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLocalFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    setLocalAudioUrl(url);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+  };
 
   const currentTimeMs = currentTime * 1000;
   const activeIndex = useAudioSync(lines, currentTimeMs);
@@ -96,11 +108,17 @@ export default function PlayerShell({ song, lines, enrichments, audioUrl }: Play
           <p className="text-white/50 text-sm">{song.artist}</p>
           {song.album && <p className="text-white/30 text-xs mt-0.5">{song.album} {song.year ? `• ${song.year}` : ""}</p>}
 
-          {audioUrl && (
-            <p className="text-xs text-amber-400 mt-2 bg-amber-400/10 rounded-lg px-2 py-1">
-              Demo song — upload your own audio to play
-            </p>
-          )}
+          {/* Audio file picker */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="mt-3 w-full flex items-center gap-2 text-xs bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/30 text-white/50 hover:text-white rounded-lg px-3 py-2 transition-all"
+          >
+            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+            </svg>
+            {localAudioUrl ? "Change audio file" : "Load audio file to play"}
+          </button>
+          <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={handleLocalFile} />
 
           {/* Quiz link */}
           <Link
@@ -115,10 +133,10 @@ export default function PlayerShell({ song, lines, enrichments, audioUrl }: Play
         </div>
 
         {/* Audio element */}
-        {audioUrl && (
+        {localAudioUrl && (
           <audio
             ref={audioRef}
-            src={audioUrl}
+            src={localAudioUrl}
             onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
             onEnded={() => setIsPlaying(false)}
             className="hidden"
