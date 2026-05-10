@@ -1,8 +1,11 @@
 import { rateLimit } from "@/lib/rateLimit";
 import { ok, err, handleError } from "@/lib/apiResponse";
-import { prisma } from "@/lib/prisma";
+import { createSong, createLyricsLines } from "@/lib/db";
 import { alignLyricsToTimestamps } from "@/lib/lyrics";
 import type { TimedWord } from "@/lib/lyrics";
+import { randomBytes } from "crypto";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
@@ -25,33 +28,35 @@ export async function POST(request: Request) {
 
     if (!title || !artist) return err("title and artist are required");
 
-    const song = await prisma.song.create({
-      data: {
-        title,
-        artist,
-        album,
-        year,
-        level: level ?? "intermediate",
-        coverUrl,
-        geniusUrl,
-        duration,
-        tags: JSON.stringify([]),
-      },
+    const songId = randomBytes(8).toString("hex");
+
+    await createSong({
+      id: songId,
+      title,
+      artist,
+      album,
+      year,
+      level: level ?? "intermediate",
+      coverUrl,
+      geniusUrl,
+      duration,
+      tags: JSON.stringify([]),
     });
 
     // Create aligned lyrics lines
     const aligned = alignLyricsToTimestamps(lyrics, words ?? []);
-    await prisma.lyricsLine.createMany({
-      data: aligned.map((line) => ({
-        songId: song.id,
+    await createLyricsLines(
+      aligned.map((line) => ({
+        id: `${songId}-${line.lineIndex}`,
+        songId,
         lineIndex: line.lineIndex,
         text: line.text,
-        startMs: line.startMs,
-        endMs: line.endMs,
-      })),
-    });
+        ...(line.startMs != null && { startMs: line.startMs }),
+        ...(line.endMs != null && { endMs: line.endMs }),
+      }))
+    );
 
-    return ok({ songId: song.id });
+    return ok({ songId });
   } catch (error) {
     return handleError(error);
   }

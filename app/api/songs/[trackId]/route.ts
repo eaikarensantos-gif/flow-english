@@ -1,5 +1,5 @@
 import { ok, err, handleError } from "@/lib/apiResponse";
-import { prisma } from "@/lib/prisma";
+import { getSongById, getLyricsLines, getWordEnrichments } from "@/lib/db";
 
 export async function GET(
   _request: Request,
@@ -7,18 +7,16 @@ export async function GET(
 ) {
   try {
     const { trackId } = await params;
-    const song = await prisma.song.findUnique({
-      where: { id: trackId },
-      include: {
-        lyricsLines: { orderBy: { lineIndex: "asc" } },
-        wordEnrichments: true,
-      },
-    });
+    const [song, lines, enrichments] = await Promise.all([
+      getSongById(trackId),
+      getLyricsLines(trackId),
+      getWordEnrichments(trackId),
+    ]);
     if (!song) return err("Song not found", 404);
     return ok({
       song,
-      lines: song.lyricsLines.map((l) => l.text),
-      words: song.wordEnrichments.map((w) => ({
+      lines: lines.map((l) => l.text),
+      words: enrichments.map((w) => ({
         word: w.word,
         definition: w.definition,
         partOfSpeech: w.partOfSpeech,

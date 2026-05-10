@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { getSongById } from "@/lib/db";
 import QuizShell from "@/components/quiz/QuizShell";
 
 export default async function QuizPage({
@@ -8,12 +8,7 @@ export default async function QuizPage({
   params: Promise<{ trackId: string }>;
 }) {
   const { trackId } = await params;
-
-  const song = await prisma.song.findUnique({
-    where: { id: trackId },
-    select: { id: true, title: true },
-  });
-
+  const song = await getSongById(trackId);
   if (!song) notFound();
 
   return (

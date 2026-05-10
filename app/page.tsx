@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { getSongs } from "@/lib/db";
 import SongGrid from "@/components/SongGrid";
 import FilterBar from "@/components/FilterBar";
 
@@ -12,10 +12,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const level = params.level;
 
-  const songs = await prisma.song.findMany({
-    where: level ? { level } : undefined,
-    orderBy: { year: "desc" },
-  });
+  const songs = await getSongs(level);
 
   return (
     <div className="px-4 md:px-8 py-8 max-w-7xl mx-auto">

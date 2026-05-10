@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { getSongById, getLyricsLines, getWordEnrichments } from "@/lib/db";
 import PlayerShell from "@/components/player/PlayerShell";
 
 export default async function PlayerPage({
@@ -9,21 +9,19 @@ export default async function PlayerPage({
 }) {
   const { trackId } = await params;
 
-  const song = await prisma.song.findUnique({
-    where: { id: trackId },
-    include: {
-      lyricsLines: { orderBy: { lineIndex: "asc" } },
-      wordEnrichments: true,
-    },
-  });
+  const [song, lines, enrichments] = await Promise.all([
+    getSongById(trackId),
+    getLyricsLines(trackId),
+    getWordEnrichments(trackId),
+  ]);
 
   if (!song) notFound();
 
   return (
     <PlayerShell
       song={song as any}
-      lines={song.lyricsLines as any}
-      enrichments={song.wordEnrichments as any}
+      lines={lines as any}
+      enrichments={enrichments as any}
       audioUrl={null}
     />
   );

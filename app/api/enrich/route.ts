@@ -1,7 +1,9 @@
 import { rateLimit } from "@/lib/rateLimit";
 import { ok, err, handleError } from "@/lib/apiResponse";
 import { enrichLines } from "@/lib/claude";
-import { prisma } from "@/lib/prisma";
+import { updateLyricsLine, upsertWordEnrichment } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
@@ -16,38 +18,25 @@ export async function POST(request: Request) {
     const enriched = await enrichLines(lines);
 
     if (songId) {
-      // Persist translations and words to DB
-      const lineUpdates = enriched.map((el, i) =>
-        prisma.lyricsLine.updateMany({
-          where: { songId, lineIndex: i },
-          data: {
-            translation: el.translation,
-            culturalNote: el.culturalNote,
-            enrichedAt: new Date(),
-          },
-        })
-      );
-
-      const wordCreates = enriched.flatMap((el, lineIndex) =>
-        el.words.map((w) =>
-          prisma.wordEnrichment.upsert({
-            where: { id: `${songId}-${lineIndex}-${w.word}` },
-            update: {},
-            create: {
-              id: `${songId}-${lineIndex}-${w.word}`,
-              songId,
-              word: w.word,
-              definition: w.definition,
-              partOfSpeech: w.partOfSpeech,
-              example: w.example,
-              difficulty: w.difficulty,
-              lineIndex,
-            },
-          })
-        )
-      );
-
-      await Promise.all([...lineUpdates, ...wordCreates]);
+      for (let i = 0; i < enriched.length; i++) {
+        const el = enriched[i];
+        await updateLyricsLine(songId, i, {
+          translation: el.translation,
+          culturalNote: el.culturalNote,
+        });
+        for (const w of el.words) {
+          await upsertWordEnrichment({
+            id: `${songId}-${i}-${w.word}`,
+            songId,
+            word: w.word,
+            definition: w.definition,
+            partOfSpeech: w.partOfSpeech,
+            example: w.example,
+            difficulty: w.difficulty,
+            lineIndex: i,
+          });
+        }
+      }
     }
 
     return ok({ enriched });
