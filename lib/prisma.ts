@@ -1,9 +1,10 @@
 import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { createClient } from "@libsql/client/http";
 
 function createPrismaClient(): PrismaClient {
   if (process.env.TURSO_DATABASE_URL) {
+    // Use web/HTTP adapter for Vercel compatibility (no native bindings)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaLibSql } = require("@prisma/adapter-libsql/web");
     const adapter = new PrismaLibSql({
       url: process.env.TURSO_DATABASE_URL,
       authToken: process.env.TURSO_AUTH_TOKEN,
